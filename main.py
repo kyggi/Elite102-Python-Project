@@ -1,6 +1,7 @@
 # Updated TextBank app with admin account creation and control
 import mysql.connector
 import getpass
+from decimal import Decimal
 
 # Connect to MySQL database
 def connect_db():
@@ -55,6 +56,84 @@ def create_account():
     finally:
         cursor.close()
         db.close()
+
+# Check user balance
+def check_balance(user_id):
+    try:
+        db = connect_db()
+        cursor = db.cursor()
+        query = "SELECT balance FROM users WHERE idusers = %s"
+        cursor.execute(query, (user_id,))
+        result = cursor.fetchone()
+        if result:
+            balance = result[0]
+            print(f"\n💰 Current Balance: ${balance:.2f}")
+        else:
+            print("❌ User not found.")
+    except mysql.connector.Error as err:
+        print(f"❌ Error: {err}")
+    finally:
+        cursor.close()
+        db.close()
+
+
+# Deposit funds
+def deposit(user_id):
+    try:
+        amount = Decimal(input("Enter amount to deposit: $"))
+        if amount <= 0:
+            print("❌ Amount must be positive.")
+            return
+
+        db = connect_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT balance FROM users WHERE idusers = %s", (user_id,))
+        result = cursor.fetchone()
+
+        if result:
+            new_balance = result[0] + amount
+            cursor.execute("UPDATE users SET balance = %s WHERE idusers = %s", (new_balance, user_id))
+            db.commit()
+            print(f"✅ Deposited ${amount:.2f}. New balance: ${new_balance:.2f}")
+        else:
+            print("❌ User not found.")
+    except Exception as err:
+        print(f"❌ Error: {err}")
+    finally:
+        cursor.close()
+        db.close()
+
+# Withdraw funds
+def withdraw(user_id):
+    try:
+        amount = Decimal(input("Enter amount to withdraw: $"))
+        if amount <= 0:
+            print("❌ Amount must be positive.")
+            return
+
+        db = connect_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT balance FROM users WHERE idusers = %s", (user_id,))
+        result = cursor.fetchone()
+
+        if result:
+            current_balance = result[0]
+            if amount > current_balance:
+                print("❌ Insufficient funds.")
+            else:
+                new_balance = current_balance - amount
+                cursor.execute("UPDATE users SET balance = %s WHERE idusers = %s", (new_balance, user_id))
+                db.commit()
+                print(f"✅ Withdrew ${amount:.2f}. New balance: ${new_balance:.2f}")
+        else:
+            print("❌ User not found.")
+    except Exception as err:
+        print(f"❌ Error: {err}")
+    finally:
+        cursor.close()
+        db.close()
+
+
 
 # Admin options: View, update, or delete user accounts
 def admin_panel():
